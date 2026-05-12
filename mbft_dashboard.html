@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MB Family Trust — Business Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #F4F6F9; color: #222; font-size: 14px; }
+
+  /* ── Header ── */
+  .header {
+    background: #1F3864; color: #fff; padding: 16px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .header h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.3px; }
+  .header-right { font-size: 12px; opacity: 0.8; text-align: right; line-height: 1.6; }
+
+  /* ── Layout ── */
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 24px; }
+  .section { background: #fff; border-radius: 10px; padding: 24px; margin-bottom: 20px;
+             box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .section-title {
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #1F3864; margin-bottom: 18px; padding-bottom: 10px;
+    border-bottom: 2px solid #E8EDF4;
+  }
+
+  /* ── KPI Cards ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .kpi-card {
+    background: #F8F9FB; border-radius: 8px; padding: 18px 20px;
+    border-left: 4px solid #ccc;
+  }
+  .kpi-card.green  { border-left-color: #1E8449; }
+  .kpi-card.red    { border-left-color: #C0392B; }
+  .kpi-card.amber  { border-left-color: #E67E22; }
+  .kpi-card.blue   { border-left-color: #1F3864; }
+  .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase;
+               letter-spacing: 0.6px; color: #666; margin-bottom: 6px; }
+  .kpi-value { font-size: 26px; font-weight: 700; color: #1a1a1a; }
+  .kpi-sub   { font-size: 11px; color: #888; margin-top: 4px; }
+  .kpi-delta { font-size: 12px; font-weight: 600; margin-top: 4px; }
+  .kpi-delta.pos { color: #1E8449; }
+  .kpi-delta.neg { color: #C0392B; }
+
+  /* ── Charts ── */
+  .chart-container { position: relative; }
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .chart-half { position: relative; }
+
+  /* ── Toggle ── */
+  .toggle-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }
+  .toggle-row input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; }
+
+  /* ── Concentration Warning ── */
+  .concentration-badge {
+    display: inline-block; background: #FFF3CD; border: 1px solid #FFC107;
+    color: #856404; border-radius: 6px; padding: 6px 12px; font-size: 12px;
+    font-weight: 600; margin-bottom: 12px;
+  }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #F0F3F8; color: #1F3864; font-weight: 700; padding: 10px 12px;
+       text-align: left; border-bottom: 2px solid #DDE3EE; font-size: 11px;
+       text-transform: uppercase; letter-spacing: 0.4px; }
+  td { padding: 9px 12px; border-bottom: 1px solid #F0F0F0; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #F8F9FB; }
+  .status-green { color: #1E8449; font-weight: 600; }
+  .status-amber { color: #E67E22; font-weight: 600; }
+  .status-red   { color: #C0392B; font-weight: 600; }
+
+  /* ── Forms ── */
+  .collapsible-header {
+    cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0; user-select: none;
+  }
+  .collapsible-header:hover { opacity: 0.8; }
+  .collapsible-body { display: none; margin-top: 16px; }
+  .collapsible-body.open { display: block; }
+  .chevron { transition: transform 0.2s; font-size: 16px; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 8px 10px; border: 1px solid #D0D7E3; border-radius: 6px;
+    font-size: 13px; color: #222; background: #fff;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none; border-color: #1F3864; box-shadow: 0 0 0 2px rgba(31,56,100,0.1);
+  }
+  .form-full { grid-column: 1 / -1; }
+  .btn {
+    display: inline-block; padding: 10px 22px; border-radius: 6px; font-size: 13px;
+    font-weight: 600; cursor: pointer; border: none; transition: background 0.15s;
+  }
+  .btn-primary { background: #1F3864; color: #fff; }
+  .btn-primary:hover { background: #162B4D; }
+  .btn-success { background: #1E8449; color: #fff; }
+  .btn-success:hover { background: #176339; }
+  .btn-amber  { background: #E67E22; color: #fff; }
+  .btn-amber:hover  { background: #CA6F1E; }
+  .form-actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; }
+  .form-msg { font-size: 13px; font-weight: 600; display: none; padding: 6px 12px;
+              border-radius: 6px; }
+  .form-msg.success { background: #D5F5E3; color: #1E8449; display: inline-block; }
+  .form-msg.error   { background: #FADBD8; color: #C0392B; display: inline-block; }
+
+  /* ── Reconciliation ── */
+  .recon-table td input {
+    width: 100%; border: 1px solid #D0D7E3; border-radius: 4px;
+    padding: 4px 6px; font-size: 13px;
+  }
+  .recon-table .confirmed { background: #D5F5E3; }
+
+  /* ── MB Co compact ── */
+  .mbco-kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .mbco-kpi { background: #F8F9FB; border-radius: 6px; padding: 12px 16px; }
+  .mbco-kpi .label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; }
+  .mbco-kpi .value { font-size: 20px; font-weight: 700; margin-top: 4px; }
+
+  /* ── Loading ── */
+  .loading { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+  .spinner {
+    display: inline-block; width: 24px; height: 24px; border: 3px solid #ddd;
+    border-top-color: #1F3864; border-radius: 50%; animation: spin 0.8s linear infinite;
+    margin-right: 8px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Utility ── */
+  .text-right { text-align: right; }
+  .text-green { color: #1E8449; font-weight: 600; }
+  .text-red   { color: #C0392B; font-weight: 600; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 700;
+  }
+  .badge-green { background: #D5F5E3; color: #1E8449; }
+  .badge-amber { background: #FFF3CD; color: #856404; }
+  .badge-red   { background: #FADBD8; color: #C0392B; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="header">
+  <h1>MB Family Trust — Business Dashboard</h1>
+  <div class="header-right">
+    <div id="currentDate"></div>
+    <div id="lastUpdated">Loading data…</div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION A: KPI STRIP
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Current Month — Key Figures</div>
+  <div class="kpi-row" id="kpiStrip">
+    <div class="loading"><span class="spinner"></span> Loading…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION B: 12-MONTH CASH FLOW FORECAST
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">12-Month Cash Flow Forecast</div>
+  <div class="toggle-row">
+    <input type="checkbox" id="toggleFA" onchange="renderForecastChart()">
+    <label for="toggleFA">Show Family-Attributed Costs separately</label>
+    <span style="margin-left:16px; font-size:11px; color:#888;">
+      ▓ Solid = Actual &nbsp;|&nbsp; ░ Light = Forecast
+    </span>
+  </div>
+  <div class="chart-container" style="height:320px;">
+    <canvas id="forecastChart"></canvas>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION C: INCOME ANALYSIS — LAST 12 MONTHS
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Income Analysis — Last 12 Months</div>
+  <div id="concentrationWarning"></div>
+  <div class="chart-row">
+    <div class="chart-half">
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:10px;">
+        Monthly Income: Mārtiņš vs Marta
+      </div>
+      <div style="height:260px;"><canvas id="incomeStackedChart"></canvas></div>
+    </div>
+    <div class="chart-half">
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:10px;">
+        Income by Client (click to filter)
+      </div>
+      <div style="height:260px;"><canvas id="incomeDonutChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION D: EXPENSE CATEGORY ANALYSIS — LAST 12 MONTHS
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Expense Category Analysis — Last 12 Months</div>
+  <div class="chart-row">
+    <div class="chart-half" style="grid-column: 1 / -1;">
+      <div style="height:320px;"><canvas id="expenseCatChart"></canvas></div>
+    </div>
+  </div>
+  <div style="margin-top:20px;">
+    <table id="expenseCatTable">
+      <thead><tr>
+        <th>Category</th><th class="text-right">Monthly Avg</th>
+        <th class="text-right">Budget</th><th class="text-right">Variance</th>
+        <th>Status</th><th>Family-Attributed</th>
+      </tr></thead>
+      <tbody id="expenseCatTableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION E: ONE-OFF FORECAST ENTRY
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="collapsible-header" onclick="toggleSection('forecastForm')">
+    <div class="section-title" style="margin-bottom:0;">Add One-Off Forecast Entry</div>
+    <span class="chevron" id="chevron-forecastForm">▼</span>
+  </div>
+  <div class="collapsible-body" id="forecastForm">
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Target Month</label>
+        <input type="month" id="f_month" required>
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="f_type">
+          <option value="Income">Income</option>
+          <option value="Expense" selected>Expense</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="f_category">
+          <optgroup label="Income">
+            <option>Consulting — Advisory</option>
+            <option>Consulting — Strategy</option>
+            <option>Consulting — Operations</option>
+            <option>Board Fee</option>
+            <option>Investment Return</option>
+          </optgroup>
+          <optgroup label="Expense">
+            <option>Staff & Payroll</option>
+            <option>Taxes & Social Contributions</option>
+            <option>Professional Services — Accounting</option>
+            <option>Professional Services — Legal</option>
+            <option>Professional Services — Advisory</option>
+            <option>IT & SaaS</option>
+            <option>Telecom</option>
+            <option>Transport</option>
+            <option>Investment Fund Contributions</option>
+            <option>Bank Fees</option>
+            <option>Family-Attributed Costs</option>
+            <option>Dividend Payment</option>
+            <option>Other</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Counterparty / Client</label>
+        <input type="text" id="f_counterparty" placeholder="e.g. Click.Grow OÜ">
+      </div>
+      <div class="form-group">
+        <label>Amount (€)</label>
+        <input type="number" id="f_amount" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Client Owner</label>
+        <select id="f_owner">
+          <option value="">— N/A —</option>
+          <option value="Mārtiņš">Mārtiņš</option>
+          <option value="Marta">Marta</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Certainty</label>
+        <select id="f_certainty">
+          <option value="Confirmed">Confirmed (&gt;90%)</option>
+          <option value="Probable" selected>Probable (50–90%)</option>
+          <option value="Possible">Possible (&lt;50%)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Family Attributed?</label>
+        <select id="f_fa">
+          <option value="No" selected>No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" id="f_notes" placeholder="Optional">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="submitForecast()">Submit Forecast Entry</button>
+      <span class="form-msg" id="forecastMsg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION F: ACTUALS ENTRY (MONTHLY RECONCILIATION)
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="collapsible-header" onclick="toggleSection('reconcilePanel')">
+    <div class="section-title" style="margin-bottom:0;">Monthly Actuals Entry</div>
+    <span class="chevron" id="chevron-reconcilePanel">▼</span>
+  </div>
+  <div class="collapsible-body" id="reconcilePanel">
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;">
+      <div class="form-group" style="flex:0 0 180px;">
+        <label>Select Month</label>
+        <input type="month" id="reconMonth">
+      </div>
+      <button class="btn btn-primary" style="margin-top:18px;" onclick="submitActual()">
+        + Add Actual Transaction
+      </button>
+    </div>
+    <div class="form-grid" id="actualEntryForm">
+      <div class="form-group">
+        <label>Type</label>
+        <select id="a_type">
+          <option value="Income">Income</option>
+          <option value="Expense" selected>Expense</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="a_category">
+          <optgroup label="Income">
+            <option>Consulting — Advisory</option>
+            <option>Consulting — Strategy</option>
+            <option>Consulting — Operations</option>
+            <option>Board Fee</option>
+            <option>Investment Return</option>
+            <option>Other</option>
+          </optgroup>
+          <optgroup label="Expense">
+            <option>Staff & Payroll</option>
+            <option>Taxes & Social Contributions</option>
+            <option>Professional Services — Accounting</option>
+            <option>Professional Services — Legal</option>
+            <option>Professional Services — Advisory</option>
+            <option>IT & SaaS</option>
+            <option>Telecom</option>
+            <option>Transport</option>
+            <option>Investment Fund Contributions</option>
+            <option>Bank Fees</option>
+            <option>Family-Attributed Costs</option>
+            <option>Dividend Payment</option>
+            <option>Other</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Counterparty</label>
+        <input type="text" id="a_counterparty" placeholder="e.g. Sidrabe Grāmatvedība">
+      </div>
+      <div class="form-group">
+        <label>Amount (€)</label>
+        <input type="number" id="a_amount" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Client Owner</label>
+        <select id="a_owner">
+          <option value="">— N/A —</option>
+          <option value="Mārtiņš">Mārtiņš</option>
+          <option value="Marta">Marta</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Family Attributed?</label>
+        <select id="a_fa">
+          <option value="No" selected>No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Invoice Reference</label>
+        <input type="text" id="a_invoice" placeholder="Optional">
+      </div>
+      <div class="form-group">
+        <label>Bank Account</label>
+        <select id="a_bank">
+          <option>Citadele Business</option>
+          <option>Revolut</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" id="a_notes" placeholder="Optional">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-success" onclick="submitActual()">Save Actual</button>
+      <span class="form-msg" id="actualMsg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SECTION G: MB Co MODULE
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="collapsible-header" onclick="toggleSection('mbcoPanel')">
+    <div class="section-title" style="margin-bottom:0;">MB Co — Investment Entity</div>
+    <span class="chevron" id="chevron-mbcoPanel">▼</span>
+  </div>
+  <div class="collapsible-body" id="mbcoPanel">
+    <div class="mbco-kpi-row" id="mbcoKpis">
+      <div class="mbco-kpi"><div class="label">YTD Income</div><div class="value" id="mbcoIncome">—</div></div>
+      <div class="mbco-kpi"><div class="label">YTD Expenses</div><div class="value" id="mbcoExpenses">—</div></div>
+      <div class="mbco-kpi"><div class="label">YTD Net</div><div class="value" id="mbcoNet">—</div></div>
+    </div>
+
+    <!-- Add MB Co Transaction -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;
+                  letter-spacing:0.5px;margin-bottom:10px;">Add MB Co Transaction</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Type</label>
+          <select id="mbco_type">
+            <option value="Income">Income</option>
+            <option value="Expense" selected>Expense</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="mbco_cat">
+            <option>Investment Return</option>
+            <option>Bank Fees</option>
+            <option>Professional Services — Legal</option>
+            <option>Dividend Payment</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount (€)</label>
+          <input type="number" id="mbco_amount" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Counterparty</label>
+          <input type="text" id="mbco_counterparty" placeholder="">
+        </div>
+        <div class="form-group">
+          <label>Drive Document Link</label>
+          <input type="url" id="mbco_drive" placeholder="https://drive.google.com/...">
+        </div>
+        <div class="form-group">
+          <label>Notes</label>
+          <input type="text" id="mbco_notes" placeholder="Optional">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="submitMBCoTransaction()">Save MB Co Transaction</button>
+        <button class="btn btn-amber" onclick="toggleSection('mbcoDividendForm')">
+          Record MB Co Dividend
+        </button>
+        <span class="form-msg" id="mbcoMsg"></span>
+      </div>
+    </div>
+
+    <!-- Dividend Form -->
+    <div class="collapsible-body" id="mbcoDividendForm" style="border-top:1px solid #eee;padding-top:16px;">
+      <div style="font-size:12px;font-weight:700;color:#E67E22;text-transform:uppercase;
+                  letter-spacing:0.5px;margin-bottom:10px;">Record MB Co Dividend Payment</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Gross Amount (€)</label>
+          <input type="number" id="div_gross" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Net Amount (€)</label>
+          <input type="number" id="div_net" step="0.01" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Decision Date</label>
+          <input type="date" id="div_decision">
+        </div>
+        <div class="form-group">
+          <label>Payment Date</label>
+          <input type="date" id="div_payment">
+        </div>
+        <div class="form-group form-full">
+          <label>Notes</label>
+          <input type="text" id="div_notes" placeholder="Optional">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-amber" onclick="submitMBCoDividend()">Record Dividend</button>
+        <span class="form-msg" id="divMsg"></span>
+      </div>
+    </div>
+
+    <!-- Documents index -->
+    <div style="margin-top:16px;border-top:1px solid #eee;padding-top:16px;">
+      <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;
+                  letter-spacing:0.5px;margin-bottom:10px;">Bank Statement Documents</div>
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Period</th><th>Description</th><th>Document</th><th>Notes</th>
+        </tr></thead>
+        <tbody id="mbcoDocsTable">
+          <tr><td colspan="5" style="color:#aaa;text-align:center;padding:20px;">
+            No documents yet. Add MB Co transactions with Drive links above.
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ─── CONFIGURATION — paste your Web App URL here ───────────────────────────
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwy0erI2541x5fhCUSMu2kTqMxpqQOZABWdjz4cShr9qa8hjOW2SM7UJD4fm0Y5SaVYrw/exec';
+// ───────────────────────────────────────────────────────────────────────────
+
+// Global state
+let mbftSummaryData     = [];
+let incomeByClientData  = null;
+let expenseByCatData    = null;
+let forecastChart       = null;
+let incomeStackedChart  = null;
+let incomeDonutChart    = null;
+let expenseCatChart     = null;
+let selectedClient      = null;
+
+// ─── INIT ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('currentDate').textContent =
+    new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // Set default months on forms
+  const cm = currentMonthValue();
+  document.getElementById('f_month').value    = cm;
+  document.getElementById('reconMonth').value = cm;
+
+  await Promise.all([
+    loadMBFTSummary(),
+    loadIncomeByClient(),
+    loadExpenseByCategory()
+  ]);
+
+  document.getElementById('lastUpdated').textContent =
+    'Last updated: ' + new Date().toLocaleTimeString('en-GB');
+});
+
+function currentMonthValue() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function fmt(n) {
+  return '€' + (parseFloat(n) || 0).toLocaleString('en-DE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function fmtFull(n) {
+  return '€' + (parseFloat(n) || 0).toLocaleString('en-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+async function apiFetch(action) {
+  const res = await fetch(WEB_APP_URL + '?action=' + action);
+  return res.json();
+}
+
+// ─── SECTION A + B: MBFT SUMMARY ──────────────────────────────────────────
+async function loadMBFTSummary() {
+  const json = await apiFetch('mbft_summary');
+  if (json.error) { console.error(json.error); return; }
+  mbftSummaryData = json.data;
+
+  renderKPIs();
+  renderForecastChart();
+  loadMBCoSummary(json.data);
+}
+
+function renderKPIs() {
+  const cm = currentMonthValue();
+  const row = mbftSummaryData.find(r => r.Month === cm) || {};
+
+  const income   = parseFloat(row.Total_MBFT_Income)      || 0;
+  const expenses = parseFloat(row.Total_MBFT_Expenses)    || 0;
+  const fa       = parseFloat(row.Family_Attributed_Costs) || 0;
+  const profit   = parseFloat(row.MBFT_Operating_Profit)  || 0;
+
+  // Previous month for delta
+  const months = mbftSummaryData.map(r => r.Month).sort();
+  const cmIdx  = months.indexOf(cm);
+  const prev   = cmIdx > 0 ? mbftSummaryData.find(r => r.Month === months[cmIdx - 1]) : null;
+  const prevProfit = prev ? parseFloat(prev.MBFT_Operating_Profit) || 0 : 0;
+  const delta  = profit - prevProfit;
+
+  document.getElementById('kpiStrip').innerHTML = `
+    <div class="kpi-card green">
+      <div class="kpi-label">Total Income</div>
+      <div class="kpi-value">${fmt(income)}</div>
+      <div class="kpi-sub">${cm}</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-label">Total Expenses</div>
+      <div class="kpi-value">${fmt(expenses)}</div>
+      <div class="kpi-sub">incl. family-attributed</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">Family-Attributed Costs</div>
+      <div class="kpi-value">${fmt(fa)}</div>
+      <div class="kpi-sub">subset of expenses above</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Operating Profit</div>
+      <div class="kpi-value">${fmt(profit)}</div>
+      <div class="kpi-delta ${delta >= 0 ? 'pos' : 'neg'}">
+        ${delta >= 0 ? '▲' : '▼'} ${fmt(Math.abs(delta))} vs prev. month
+      </div>
+    </div>`;
+}
+
+function renderForecastChart() {
+  const showFA = document.getElementById('toggleFA').checked;
+  const cm = currentMonthValue();
+
+  const labels   = mbftSummaryData.map(r => r.Month);
+  const isActual = labels.map(m => m <= cm);
+
+  const incomes   = mbftSummaryData.map(r => parseFloat(r.Total_MBFT_Income)      || 0);
+  const expenses  = mbftSummaryData.map(r => parseFloat(r.Total_MBFT_Expenses)    || 0);
+  const fa        = mbftSummaryData.map(r => parseFloat(r.Family_Attributed_Costs) || 0);
+  const profits   = mbftSummaryData.map(r => parseFloat(r.MBFT_Net_Cash)           || 0);
+
+  // Split actual vs forecast for visual distinction
+  const incomeActual   = incomes.map((v, i) =>  isActual[i] ? v : null);
+  const incomeForecast = incomes.map((v, i) => !isActual[i] ? v : null);
+  const expActual      = expenses.map((v, i) =>  isActual[i] ? v : null);
+  const expForecast    = expenses.map((v, i) => !isActual[i] ? v : null);
+
+  const datasets = [
+    { label: 'Income (Actual)',   data: incomeActual,   backgroundColor: 'rgba(30,132,73,0.85)',  stack: 'income' },
+    { label: 'Income (Forecast)', data: incomeForecast, backgroundColor: 'rgba(30,132,73,0.35)',  stack: 'income' },
+    { label: 'Expenses (Actual)', data: expActual,      backgroundColor: 'rgba(192,57,43,0.85)', stack: 'expense' },
+    { label: 'Expenses (Forecast)',data: expForecast,   backgroundColor: 'rgba(192,57,43,0.35)', stack: 'expense' },
+  ];
+
+  if (showFA) {
+    const faActual   = fa.map((v, i) =>  isActual[i] ? v : null);
+    const faForecast = fa.map((v, i) => !isActual[i] ? v : null);
+    datasets.push({ label: 'FA Costs (Actual)',   data: faActual,   backgroundColor: 'rgba(230,126,34,0.85)', stack: 'fa' });
+    datasets.push({ label: 'FA Costs (Forecast)', data: faForecast, backgroundColor: 'rgba(230,126,34,0.35)', stack: 'fa' });
+  }
+
+  const ctx = document.getElementById('forecastChart').getContext('2d');
+  if (forecastChart) forecastChart.destroy();
+
+  forecastChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + fmtFull(ctx.parsed.y)
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 } } },
+        y: { ticks: { callback: v => fmt(v) } }
+      }
+    }
+  });
+}
+
+// ─── SECTION C: INCOME BY CLIENT ──────────────────────────────────────────
+async function loadIncomeByClient() {
+  const json = await apiFetch('mbft_income_by_client');
+  if (json.error) { console.error(json.error); return; }
+  incomeByClientData = json;
+
+  // Concentration warnings
+  const warnEl = document.getElementById('concentrationWarning');
+  if (json.concentration_warnings && json.concentration_warnings.length > 0) {
+    warnEl.innerHTML = json.concentration_warnings.map(w =>
+      `<div class="concentration-badge">⚠️ ${w.client}: ${w.pct}% of monthly income — concentration risk</div>`
+    ).join(' ');
+  } else {
+    warnEl.innerHTML = '';
+  }
+
+  renderIncomeCharts(null);
+}
+
+function renderIncomeCharts(filterClient) {
+  selectedClient = filterClient;
+  const data = incomeByClientData;
+  if (!data) return;
+
+  const months  = data.months || [];
+  const clients = data.clients || [];
+
+  // Stacked bar: Mārtiņš vs Marta by month
+  const martinsData = months.map(m => {
+    return clients
+      .filter(c => filterClient ? c.client === filterClient : true)
+      .filter(c => c.owner === 'Mārtiņš')
+      .reduce((s, c) => s + (c.months[m] || 0), 0);
+  });
+  const martaData = months.map(m => {
+    return clients
+      .filter(c => filterClient ? c.client === filterClient : true)
+      .filter(c => c.owner === 'Marta')
+      .reduce((s, c) => s + (c.months[m] || 0), 0);
+  });
+
+  const stackCtx = document.getElementById('incomeStackedChart').getContext('2d');
+  if (incomeStackedChart) incomeStackedChart.destroy();
+  incomeStackedChart = new Chart(stackCtx, {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [
+        { label: 'Mārtiņš', data: martinsData, backgroundColor: 'rgba(31,56,100,0.85)', stack: 's' },
+        { label: 'Marta',   data: martaData,   backgroundColor: 'rgba(230,126,34,0.85)', stack: 's' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtFull(ctx.parsed.y) } }
+      },
+      scales: {
+        x: { stacked: true, ticks: { font: { size: 10 } } },
+        y: { stacked: true, ticks: { callback: v => fmt(v) } }
+      }
+    }
+  });
+
+  // Donut: by client (top 6 + Other)
+  const topClients = [...clients].sort((a, b) => b.total - a.total);
+  const top6  = topClients.slice(0, 6);
+  const other = topClients.slice(6).reduce((s, c) => s + c.total, 0);
+  const donutLabels = top6.map(c => c.client).concat(other > 0 ? ['Other'] : []);
+  const donutData   = top6.map(c => c.total).concat(other > 0 ? [other] : []);
+  const palette = ['#1F3864','#E67E22','#1E8449','#8E44AD','#2980B9','#C0392B','#95A5A6'];
+
+  const donutCtx = document.getElementById('incomeDonutChart').getContext('2d');
+  if (incomeDonutChart) incomeDonutChart.destroy();
+  incomeDonutChart = new Chart(donutCtx, {
+    type: 'doughnut',
+    data: {
+      labels: donutLabels,
+      datasets: [{ data: donutData, backgroundColor: palette, borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+              const pct   = total > 0 ? Math.round(ctx.parsed / total * 100) : 0;
+              return ctx.label + ': ' + fmtFull(ctx.parsed) + ' (' + pct + '%)';
+            }
+          }
+        }
+      },
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const idx    = elements[0].index;
+        const client = donutLabels[idx] === 'Other' ? null : donutLabels[idx];
+        renderIncomeCharts(client === selectedClient ? null : client);
+      }
+    }
+  });
+}
+
+// ─── SECTION D: EXPENSE BY CATEGORY ───────────────────────────────────────
+async function loadExpenseByCategory() {
+  const json = await apiFetch('mbft_expense_by_category');
+  if (json.error) { console.error(json.error); return; }
+  expenseByCatData = json;
+  renderExpenseChart();
+}
+
+function renderExpenseChart() {
+  const data = expenseByCatData;
+  if (!data) return;
+  const cats = data.categories || [];
+
+  // Horizontal bar
+  const labels  = cats.map(c => c.category);
+  const actuals = cats.map(c => c.monthly_avg || 0);
+  const budgets = cats.map(c => c.budget || 0);
+  const colors  = cats.map(c =>
+    c.budget_status === 'over'  ? 'rgba(192,57,43,0.85)' :
+    c.budget_status === 'near'  ? 'rgba(230,126,34,0.85)' :
+                                  'rgba(30,132,73,0.75)'
+  );
+
+  const ctx = document.getElementById('expenseCatChart').getContext('2d');
+  if (expenseCatChart) expenseCatChart.destroy();
+  expenseCatChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Monthly Avg Actual', data: actuals, backgroundColor: colors },
+        { label: 'Budget',             data: budgets, backgroundColor: 'transparent',
+          borderColor: '#1F3864', borderWidth: 2, borderDash: [4, 3], type: 'bar' }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtFull(ctx.parsed.x) } }
+      },
+      scales: {
+        x: { ticks: { callback: v => fmt(v) } },
+        y: { ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+
+  // Table
+  const tbody = document.getElementById('expenseCatTableBody');
+  tbody.innerHTML = cats.map(c => {
+    const variance = c.budget > 0 ? c.monthly_avg - c.budget : null;
+    const statusClass = c.budget_status === 'over'  ? 'status-red' :
+                        c.budget_status === 'near'  ? 'status-amber' : 'status-green';
+    const statusText  = c.budget_status === 'over'  ? `Over (${c.budget_pct}%)` :
+                        c.budget_status === 'near'  ? `Near (${c.budget_pct}%)` :
+                        c.budget_status === 'under' ? `OK (${c.budget_pct}%)` : '—';
+    return `<tr>
+      <td>${c.category}</td>
+      <td class="text-right">${fmtFull(c.monthly_avg)}</td>
+      <td class="text-right">${c.budget > 0 ? fmtFull(c.budget) : '—'}</td>
+      <td class="text-right ${variance !== null ? (variance > 0 ? 'text-red' : 'text-green') : ''}">
+        ${variance !== null ? (variance > 0 ? '+' : '') + fmtFull(variance) : '—'}
+      </td>
+      <td class="${statusClass}">${statusText}</td>
+      <td>${c.fa_total > 0 ? '<span class="badge badge-amber">€' + Math.round(c.fa_total) + ' FA</span>' : ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── MB Co SUMMARY ─────────────────────────────────────────────────────────
+function loadMBCoSummary() {
+  apiFetch('family_summary').then(json => {
+    if (json.error) return;
+    const year = new Date().getFullYear().toString();
+    const ytd  = json.data.filter(r => r.Month && r.Month.startsWith(year));
+    // MBCo data is in family summary as dividends received — use dedicated endpoint
+  });
+  // Simple placeholder — MB Co data populated via manual entries
+  document.getElementById('mbcoIncome').textContent   = '—';
+  document.getElementById('mbcoExpenses').textContent = '—';
+  document.getElementById('mbcoNet').textContent      = '—';
+}
+
+// ─── COLLAPSIBLE SECTIONS ──────────────────────────────────────────────────
+function toggleSection(id) {
+  const body    = document.getElementById(id);
+  const chevron = document.getElementById('chevron-' + id);
+  const isOpen  = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (chevron) chevron.classList.toggle('open', !isOpen);
+}
+
+// ─── FORM: FORECAST ONE-OFF ────────────────────────────────────────────────
+async function submitForecast() {
+  const payload = {
+    type:                 'forecast_oneoff',
+    target_month:         document.getElementById('f_month').value,
+    entity:               'MBFT',
+    tx_type:              document.getElementById('f_type').value,
+    category:             document.getElementById('f_category').value,
+    counterparty:         document.getElementById('f_counterparty').value,
+    amount:               document.getElementById('f_amount').value,
+    client_owner:         document.getElementById('f_owner').value,
+    certainty:            document.getElementById('f_certainty').value,
+    is_family_attributed: document.getElementById('f_fa').value,
+    notes:                document.getElementById('f_notes').value,
+    entered_by:           'MBFT Dashboard'
+  };
+
+  if (!payload.target_month || !payload.amount) {
+    showMsg('forecastMsg', 'Month and amount are required.', 'error');
+    return;
+  }
+
+  try {
+    const res  = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (json.success) {
+      showMsg('forecastMsg', '✅ Saved — ID: ' + json.id, 'success');
+      document.getElementById('f_amount').value      = '';
+      document.getElementById('f_counterparty').value = '';
+      document.getElementById('f_notes').value        = '';
+      await loadMBFTSummary();
+    } else {
+      showMsg('forecastMsg', '❌ ' + (json.error || 'Error'), 'error');
+    }
+  } catch (e) {
+    showMsg('forecastMsg', '❌ Network error: ' + e.message, 'error');
+  }
+}
+
+// ─── FORM: ACTUAL ENTRY ────────────────────────────────────────────────────
+async function submitActual() {
+  const month = document.getElementById('reconMonth').value;
+  const payload = {
+    type:                 'actual_entry',
+    transaction_month:    month,
+    entity:               'MBFT',
+    tx_type:              document.getElementById('a_type').value,
+    category:             document.getElementById('a_category').value,
+    counterparty:         document.getElementById('a_counterparty').value,
+    amount:               document.getElementById('a_amount').value,
+    client_owner:         document.getElementById('a_owner').value,
+    is_family_attributed: document.getElementById('a_fa').value,
+    invoice_reference:    document.getElementById('a_invoice').value,
+    bank_account:         document.getElementById('a_bank').value,
+    notes:                document.getElementById('a_notes').value,
+    entered_by:           'MBFT Dashboard'
+  };
+
+  if (!month || !payload.amount) {
+    showMsg('actualMsg', 'Month and amount are required.', 'error');
+    return;
+  }
+
+  try {
+    const res  = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (json.success) {
+      showMsg('actualMsg', '✅ Saved — ID: ' + json.id, 'success');
+      document.getElementById('a_amount').value      = '';
+      document.getElementById('a_counterparty').value = '';
+      document.getElementById('a_invoice').value      = '';
+      document.getElementById('a_notes').value        = '';
+      await loadMBFTSummary();
+    } else {
+      showMsg('actualMsg', '❌ ' + (json.error || 'Error'), 'error');
+    }
+  } catch (e) {
+    showMsg('actualMsg', '❌ Network error: ' + e.message, 'error');
+  }
+}
+
+// ─── FORM: MB Co TRANSACTION ───────────────────────────────────────────────
+async function submitMBCoTransaction() {
+  const payload = {
+    type:             'actual_entry',
+    transaction_month: currentMonthValue(),
+    entity:           'MBCo',
+    tx_type:          document.getElementById('mbco_type').value,
+    category:         document.getElementById('mbco_cat').value,
+    amount:           document.getElementById('mbco_amount').value,
+    counterparty:     document.getElementById('mbco_counterparty').value,
+    drive_link:       document.getElementById('mbco_drive').value,
+    notes:            document.getElementById('mbco_notes').value,
+    entered_by:       'MBFT Dashboard'
+  };
+
+  if (!payload.amount) {
+    showMsg('mbcoMsg', 'Amount is required.', 'error');
+    return;
+  }
+
+  try {
+    const res  = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (json.success) {
+      showMsg('mbcoMsg', '✅ MB Co transaction saved.', 'success');
+      // Also log as document if drive link provided
+      if (payload.drive_link) {
+        await fetch(WEB_APP_URL, {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'mbco_document', description: payload.category + ' — ' + payload.counterparty,
+            drive_link: payload.drive_link, entered_by: 'MBFT Dashboard', notes: payload.notes
+          })
+        });
+      }
+      document.getElementById('mbco_amount').value      = '';
+      document.getElementById('mbco_counterparty').value = '';
+      document.getElementById('mbco_drive').value        = '';
+      document.getElementById('mbco_notes').value        = '';
+    } else {
+      showMsg('mbcoMsg', '❌ ' + (json.error || 'Error'), 'error');
+    }
+  } catch (e) {
+    showMsg('mbcoMsg', '❌ ' + e.message, 'error');
+  }
+}
+
+// ─── FORM: MB Co DIVIDEND ──────────────────────────────────────────────────
+async function submitMBCoDividend() {
+  const gross    = parseFloat(document.getElementById('div_gross').value) || 0;
+  const net      = parseFloat(document.getElementById('div_net').value)   || 0;
+  const decision = document.getElementById('div_decision').value;
+  const payment  = document.getElementById('div_payment').value;
+  const notes    = document.getElementById('div_notes').value;
+
+  if (!gross || !payment) {
+    showMsg('divMsg', 'Gross amount and payment date are required.', 'error');
+    return;
+  }
+
+  const month = payment.substring(0, 7);
+
+  // Write as MB Co Dividend Payment (expense from MB Co)
+  const p1 = await fetch(WEB_APP_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'actual_entry', transaction_month: month, entity: 'MBCo',
+      tx_type: 'Expense', category: 'Dividend Payment', amount: gross,
+      counterparty: 'Family', notes: 'Gross: €' + gross + ' | Net: €' + net + ' | ' + notes,
+      entered_by: 'MBFT Dashboard'
+    })
+  }).then(r => r.json());
+
+  // Write as Family income (MB Co Dividend Received)
+  const p2 = await fetch(WEB_APP_URL, {
+    method: 'POST',
+    body: JSON.stringify({
+      type: 'actual_entry', transaction_month: month, entity: 'Family',
+      tx_type: 'Income', category: 'MB Co Dividend Received', amount: net,
+      counterparty: 'MB Co', notes: 'Net dividend. Gross: €' + gross + ' | Decision: ' + decision,
+      entered_by: 'MBFT Dashboard'
+    })
+  }).then(r => r.json());
+
+  if (p1.success && p2.success) {
+    showMsg('divMsg', '✅ Dividend recorded — MB Co outflow + Family income both saved.', 'success');
+    ['div_gross','div_net','div_decision','div_payment','div_notes']
+      .forEach(id => document.getElementById(id).value = '');
+  } else {
+    showMsg('divMsg', '❌ Partial error — check spreadsheet.', 'error');
+  }
+}
+
+// ─── UTILITY ───────────────────────────────────────────────────────────────
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent  = text;
+  el.className    = 'form-msg ' + type;
+  setTimeout(() => { el.className = 'form-msg'; }, 5000);
+}
+</script>
+</body>
+</html>
