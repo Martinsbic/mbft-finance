@@ -612,7 +612,14 @@ async function loadMBFTSummary() {
 
 function renderKPIs() {
   const cm = currentMonthValue();
-  const row = mbftSummaryData.find(r => r.Month === cm) || {};
+  // Use current month if it has data; otherwise fall back to most recent month with income
+  let row = mbftSummaryData.find(r => r.Month === cm);
+  if (!row || (parseFloat(row.Total_MBFT_Income) === 0 && parseFloat(row.Total_MBFT_Expenses) === 0)) {
+    const withData = mbftSummaryData
+      .filter(r => r.Month <= cm && (parseFloat(r.Total_MBFT_Income) > 0 || parseFloat(r.Total_MBFT_Expenses) > 0));
+    row = withData.length > 0 ? withData[withData.length - 1] : {};
+  }
+  if (!row) row = {};
 
   const income   = parseFloat(row.Total_MBFT_Income)      || 0;
   const expenses = parseFloat(row.Total_MBFT_Expenses)    || 0;
@@ -626,11 +633,12 @@ function renderKPIs() {
   const prevProfit = prev ? parseFloat(prev.MBFT_Operating_Profit) || 0 : 0;
   const delta  = profit - prevProfit;
 
+  const displayMonth = row.Month || cm;
   document.getElementById('kpiStrip').innerHTML = `
     <div class="kpi-card green">
       <div class="kpi-label">Total Income</div>
       <div class="kpi-value">${fmt(income)}</div>
-      <div class="kpi-sub">${cm}</div>
+      <div class="kpi-sub">${displayMonth}</div>
     </div>
     <div class="kpi-card red">
       <div class="kpi-label">Total Expenses</div>
