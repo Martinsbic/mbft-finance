@@ -182,7 +182,7 @@
      SECTION B: FAMILY EXPENSE SUMMARY
 ══════════════════════════════════════════════════════════════ -->
 <div class="section">
-  <div class="section-title">Family Expenses — Current Month vs Budget</div>
+  <div class="section-title" id="expenseSectionTitle">Family Expenses — Current Month vs Budget</div>
   <div id="expenseSummaryTable">
     <div class="loading"><span class="spinner"></span> Loading…</div>
   </div>
@@ -593,11 +593,53 @@ function renderIncomeKPIs() {
 // ── SECTION C: CASH FLOW CHART ─────────────────────────────────────────────
 function renderCashFlowChart() {
   const cm = currentMonthValue();
-  const labels    = familySummaryData.map(r => r.Month);
-  const isActual  = labels.map(m => m <= cm);
-  const income    = familySummaryData.map(r => parseFloat(r.Total_Family_Income)    || 0);
-  const expenses  = familySummaryData.map(r => parseFloat(r.Total_Family_Expenses)  || 0);
-  const balance   = familySummaryData.map(r => parseFloat(r.Projected_Balance)      || 0);
+  const labels = familySummaryData.map(r => r.Month);
+
+  // Baseline from last actual month with data
+  const lastActualRow = getDisplayRow();
+  const estIncome   = parseFloat(lastActualRow.Total_Family_Income)   || 4476;
+  const estExpenses = (familyExpenseData && familyExpenseData.categories)
+    ? familyExpenseData.categories.reduce((s, c) => s + (parseFloat(c.budget) || 0), 0)
+    : Math.min(parseFloat(lastActualRow.Total_Family_Expenses) || 5460, 6500);
+
+  // Build projected arrays — use actual data where available, estimates for future
+  let runningBalance = parseFloat(lastActualRow.Projected_Balance) || 0;
+  // Correct starting balance: for April actuals, balance = cumulative net from start of data
+  // For forward months we project from that base
+  const income   = [];
+  const expenses = [];
+  const balance  = [];
+  const isActual = [];
+
+  for (let i = 0; i < familySummaryData.length; i++) {
+    const r   = familySummaryData[i];
+    const m   = r.Month;
+    const inc = parseFloat(r.Total_Family_Income)   || 0;
+    const exp = parseFloat(r.Total_Family_Expenses) || 0;
+    const bal = parseFloat(r.Projected_Balance)     || 0;
+
+    if (m < cm && (inc > 0 || exp > 0)) {
+      // Historical month with real data
+      income.push(inc);
+      expenses.push(exp);
+      balance.push(bal);
+      isActual.push(true);
+      runningBalance = bal;
+    } else if (m >= cm) {
+      // Current or future: project using estimates
+      runningBalance += estIncome - estExpenses;
+      income.push(estIncome);
+      expenses.push(estExpenses);
+      balance.push(runningBalance);
+      isActual.push(false);
+    } else {
+      // Historical month with no data (pre-import period)
+      income.push(0);
+      expenses.push(0);
+      balance.push(0);
+      isActual.push(false);
+    }
+  }
 
   // Point styles for salary transition months
   const pointStyles = labels.map(m => {
@@ -703,6 +745,11 @@ async function loadFamilyExpenses() {
   familyExpenseData = json;
   renderExpenseSummaryTable();
   renderExpenseCharts();
+  // Re-render forward projections now that budget data is available
+  if (familySummaryData.length > 0) {
+    renderCashFlowChart();
+    renderRiskTable();
+  }
 }
 
 function renderExpenseSummaryTable() {
@@ -710,18 +757,43 @@ function renderExpenseSummaryTable() {
   if (!data) return;
   const cats = data.categories || [];
 
+  // If no current-month actuals, fall back to monthly averages
+  const totalCurrentMonth = cats.reduce((s, c) => s + (parseFloat(c.current_month) || 0), 0);
+  const usingAvg = totalCurrentMonth === 0;
+  const displayRow = getDisplayRow();
+  const displayMonth = displayRow.Month || currentMonthValue();
+  const titleEl = document.getElementById('expenseSectionTitle');
+  if (titleEl) {
+    titleEl.textContent = usingAvg
+      ? `Family Expenses — Monthly Average vs Budget`
+      : `Family Expenses — ${displayMonth} vs Budget`;
+  }
+  const tableNote = usingAvg
+    ? `<div style="font-size:12px;color:#888;background:#FEF9E7;border:1px solid #F9E79F;
+                  border-radius:6px;padding:8px 12px;margin-bottom:10px;">
+        ℹ️ No transactions recorded for the current month yet — showing monthly averages from historical data.
+       </div>`
+    : '';
+
   let totalBudget = 0, totalActual = 0;
   const rows = cats.map(c => {
     const budget  = parseFloat(c.budget) || 0;
-    const actual  = parseFloat(c.current_month) || 0;
+    const actual  = usingAvg ? (parseFloat(c.monthly_avg) || 0) : (parseFloat(c.current_month) || 0);
     const variance = budget > 0 ? actual - budget : null;
     totalBudget += budget;
     totalActual += actual;
-    const sc = c.budget_status === 'red' ? 'status-red' :
-               c.budget_status === 'amber' ? 'status-amber' : 'status-green';
-    const st = c.budget_status === 'red'   ? `Over (${c.current_month_pct}%)` :
-               c.budget_status === 'amber' ? `Near (${c.current_month_pct}%)` :
-               budget > 0                  ? `OK (${c.current_month_pct}%)` : '—';
+    let sc, st;
+    if (usingAvg) {
+      const pct = budget > 0 ? Math.round(actual / budget * 100) : null;
+      sc = pct == null ? '' : pct > 100 ? 'status-red' : pct > 85 ? 'status-amber' : 'status-green';
+      st = pct != null ? `avg ${pct}%` : '—';
+    } else {
+      sc = c.budget_status === 'red' ? 'status-red' :
+           c.budget_status === 'amber' ? 'status-amber' : 'status-green';
+      st = c.budget_status === 'red'   ? `Over (${c.current_month_pct}%)` :
+           c.budget_status === 'amber' ? `Near (${c.current_month_pct}%)` :
+           budget > 0                  ? `OK (${c.current_month_pct}%)` : '—';
+    }
     const fa = c.fa_total > 0
       ? `<span class="badge badge-teal">€${Math.round(c.fa_total)} MBFT</span>` : '';
     const varStr = variance !== null
@@ -737,16 +809,16 @@ function renderExpenseSummaryTable() {
   }).join('');
 
   const cashNote = `<div style="margin-top:10px;font-size:12px;color:#888;">
-    ℹ️ Cash Withdrawals (€${fmt(cats.find(c=>c.category==='Cash Withdrawals')?.current_month||0)})
-    — tracking visibility limited to ATM amounts only. Actual spend unknown.
+    ℹ️ Cash Withdrawals — tracking visibility limited to ATM amounts only. Actual spend unknown.
   </div>`;
 
-  document.getElementById('expenseSummaryTable').innerHTML = `
+  const colHeader = usingAvg ? 'Monthly Avg' : 'Actual / Forecast';
+  document.getElementById('expenseSummaryTable').innerHTML = tableNote + `
     <table>
       <thead><tr>
         <th>Category</th><th class="text-right">Budget</th>
-        <th class="text-right">Actual / Forecast</th>
-        <th class="text-right">Variance</th><th>Status</th>
+        <th class="text-right">${colHeader}</th>
+        <th class="text-right">vs Budget</th><th>Status</th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr class="total-row">
@@ -912,13 +984,22 @@ function renderIncomeCharts() {
 function renderRiskTable() {
   const cm = currentMonthValue();
   const forward6 = familySummaryData.filter(r => r.Month >= cm).slice(0, 6);
-  let atRisk = 0;
 
+  // Baseline projections from last actual month + budget data
+  const lastActualRow = getDisplayRow();
+  const estIncome   = parseFloat(lastActualRow.Total_Family_Income)   || 4476;
+  const estExpenses = (familyExpenseData && familyExpenseData.categories)
+    ? familyExpenseData.categories.reduce((s, c) => s + (parseFloat(c.budget) || 0), 0)
+    : Math.min(parseFloat(lastActualRow.Total_Family_Expenses) || 5460, 6500);
+  let runningBalance = parseFloat(lastActualRow.Projected_Balance) || 0;
+
+  let atRisk = 0;
   const rows = forward6.map(r => {
-    const inc  = parseFloat(r.Total_Family_Income)   || 0;
-    const exp  = parseFloat(r.Total_Family_Expenses) || 0;
-    const net  = parseFloat(r.Family_Net_Cash)       || 0;
-    const bal  = parseFloat(r.Projected_Balance)     || 0;
+    const inc  = estIncome;
+    const exp  = estExpenses;
+    const net  = inc - exp;
+    runningBalance += net;
+    const bal = runningBalance;
 
     let riskClass, riskLabel, notes = [];
     if (bal < CC_FLOOR || net < 0) {
