@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bičevskis Family — Consolidated Finance Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #F5F3EF; color: #222; font-size: 14px; }
+
+  /* ── Header — warm dark teal, distinct from MBFT navy ── */
+  .header {
+    background: #1A3A2F; color: #fff; padding: 16px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .header h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.3px; }
+  .header-right { font-size: 12px; opacity: 0.85; text-align: right; line-height: 1.6; }
+
+  /* ── Layout ── */
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+  .section { background: #fff; border-radius: 10px; padding: 24px; margin-bottom: 20px;
+             box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .section-title {
+    font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+    color: #1A3A2F; margin-bottom: 18px; padding-bottom: 10px;
+    border-bottom: 2px solid #E4EDE8;
+  }
+
+  /* ── KPI Cards ── */
+  .kpi-row-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+  .kpi-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .kpi-card {
+    background: #F8FAF8; border-radius: 8px; padding: 16px 18px;
+    border-left: 4px solid #ccc;
+  }
+  .kpi-card.navy   { border-left-color: #1A3A2F; }
+  .kpi-card.orange { border-left-color: #E67E22; }
+  .kpi-card.gold   { border-left-color: #D4AC0D; }
+  .kpi-card.teal   { border-left-color: #148F77; }
+  .kpi-card.green  { border-left-color: #1E8449; }
+  .kpi-card.red    { border-left-color: #C0392B; }
+  .kpi-card.blue   { border-left-color: #2471A3; }
+  .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase;
+               letter-spacing: 0.5px; color: #666; margin-bottom: 5px; }
+  .kpi-value { font-size: 22px; font-weight: 700; color: #1a1a1a; }
+  .kpi-sub   { font-size: 11px; color: #999; margin-top: 3px; }
+
+  /* ── Charts ── */
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .chart-full { position: relative; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #EDF3EF; color: #1A3A2F; font-weight: 700; padding: 10px 12px;
+       text-align: left; border-bottom: 2px solid #C8DDD0; font-size: 11px;
+       text-transform: uppercase; letter-spacing: 0.4px; }
+  td { padding: 9px 12px; border-bottom: 1px solid #F0F0F0; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #F8FAF8; }
+  tr.total-row td { font-weight: 700; background: #EDF3EF; border-top: 2px solid #C8DDD0; }
+
+  .status-green { color: #1E8449; font-weight: 600; }
+  .status-amber { color: #E67E22; font-weight: 600; }
+  .status-red   { color: #C0392B; font-weight: 600; }
+  .text-right   { text-align: right; }
+  .text-green   { color: #1E8449; }
+  .text-red     { color: #C0392B; }
+
+  /* ── Risk table ── */
+  .risk-green { background: #D5F5E3; color: #1E8449; font-weight: 700;
+                text-align: center; border-radius: 4px; padding: 3px 8px; }
+  .risk-amber { background: #FEF9E7; color: #E67E22; font-weight: 700;
+                text-align: center; border-radius: 4px; padding: 3px 8px; }
+  .risk-red   { background: #FADBD8; color: #C0392B; font-weight: 700;
+                text-align: center; border-radius: 4px; padding: 3px 8px; }
+  .risk-summary { margin-top: 14px; padding: 12px 16px; border-radius: 8px;
+                  font-size: 13px; font-weight: 600; }
+  .risk-summary.ok     { background: #D5F5E3; color: #1E8449; }
+  .risk-summary.warn   { background: #FEF9E7; color: #E67E22; }
+  .risk-summary.danger { background: #FADBD8; color: #C0392B; }
+
+  /* ── Credit card ── */
+  .cc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+  .cc-stat { background: #F8FAF8; border-radius: 8px; padding: 16px; }
+  .cc-stat .label { font-size: 11px; color: #888; font-weight: 600;
+                    text-transform: uppercase; letter-spacing: 0.4px; }
+  .cc-stat .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .cc-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+
+  /* ── Salary transition badge ── */
+  .salary-note {
+    display: inline-block; padding: 4px 10px; border-radius: 5px;
+    font-size: 11px; font-weight: 600; margin-right: 8px;
+  }
+  .salary-end   { background: #FADBD8; color: #C0392B; }
+  .salary-start { background: #D5F5E3; color: #1E8449; }
+  .salary-overlap { background: #FEF9E7; color: #E67E22; }
+
+  /* ── Forms ── */
+  .collapsible-header {
+    cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0; user-select: none;
+  }
+  .collapsible-header:hover { opacity: 0.8; }
+  .collapsible-body { display: none; margin-top: 16px; }
+  .collapsible-body.open { display: block; }
+  .chevron { font-size: 16px; transition: transform 0.2s; }
+  .chevron.open { transform: rotate(180deg); }
+
+  .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label { font-size: 11px; font-weight: 600; color: #555;
+                      text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-group input, .form-group select {
+    padding: 8px 10px; border: 1px solid #C8DDD0; border-radius: 6px;
+    font-size: 13px; color: #222; background: #fff;
+  }
+  .form-group input:focus, .form-group select:focus {
+    outline: none; border-color: #1A3A2F; box-shadow: 0 0 0 2px rgba(26,58,47,0.1);
+  }
+  .form-full { grid-column: 1 / -1; }
+  .btn { display: inline-block; padding: 10px 20px; border-radius: 6px;
+         font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+  .btn-primary { background: #1A3A2F; color: #fff; }
+  .btn-primary:hover { background: #122A22; }
+  .btn-gold    { background: #D4AC0D; color: #fff; }
+  .btn-gold:hover { background: #B8960B; }
+  .btn-teal    { background: #148F77; color: #fff; }
+  .btn-teal:hover { background: #0F6E5C; }
+  .form-actions { margin-top: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .form-msg { font-size: 13px; font-weight: 600; display: none; padding: 6px 12px; border-radius: 6px; }
+  .form-msg.success { background: #D5F5E3; color: #1E8449; display: inline-block; }
+  .form-msg.error   { background: #FADBD8; color: #C0392B; display: inline-block; }
+
+  .divider { border: none; border-top: 1px solid #E4EDE8; margin: 20px 0; }
+
+  /* ── MBFT-funded callout ── */
+  .mbft-callout {
+    background: #FEF9E7; border: 1px solid #F9E79F; border-radius: 8px;
+    padding: 14px 18px; margin-top: 16px;
+  }
+  .mbft-callout .title { font-size: 12px; font-weight: 700; color: #7D6608;
+                         text-transform: uppercase; margin-bottom: 8px; }
+
+  /* ── Loading ── */
+  .loading { text-align: center; padding: 32px; color: #999; }
+  .spinner { display: inline-block; width: 22px; height: 22px; border: 3px solid #ddd;
+             border-top-color: #1A3A2F; border-radius: 50%;
+             animation: spin 0.8s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; }
+  .badge-teal { background: #D1F2EB; color: #148F77; }
+  .badge-amber { background: #FEF9E7; color: #E67E22; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Bičevskis Family — Consolidated Finance Dashboard</h1>
+  <div class="header-right">
+    <div id="currentDate"></div>
+    <div id="lastUpdated">Loading data…</div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION A: FAMILY INCOME — KPI STRIP (6 cards)
+══════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Family Income — Current Month</div>
+  <div class="kpi-row-6" id="incomeKpis">
+    <div class="loading"><span class="spinner"></span> Loading…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION B: FAMILY EXPENSE SUMMARY
+══════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Family Expenses — Current Month vs Budget</div>
+  <div id="expenseSummaryTable">
+    <div class="loading"><span class="spinner"></span> Loading…</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION C: 12-MONTH CASH FLOW FORECAST
+══════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">12-Month Family Cash Flow Forecast</div>
+  <div style="margin-bottom:12px;">
+    <span class="salary-end">▼ LU salary ends Aug 2026</span>
+    <span class="salary-overlap">⇄ Jul 2026: both incomes</span>
+    <span class="salary-start">▲ VNĪ starts Jul 2026</span>
+    <span style="margin-left:16px;font-size:11px;color:#888;">
+      — Red line = €2,000 cash floor &nbsp;|&nbsp; ▓ Solid = Actual &nbsp;|&nbsp; ░ Light = Forecast
+    </span>
+  </div>
+  <div style="position:relative;height:340px;">
+    <canvas id="cashFlowChart"></canvas>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION D: EXPENSE CATEGORY BREAKDOWN — LAST 12 MONTHS
+══════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Expense Category Breakdown — Last 12 Months</div>
+  <div class="chart-row">
+    <div class="chart-full">
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px;">By Category (%)</div>
+      <div style="height:280px;"><canvas id="expenseDonut"></canvas></div>
+    </div>
+    <div class="chart-full">
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px;">Budget vs Actual (monthly avg)</div>
+      <div style="height:280px;"><canvas id="expenseBarChart"></canvas></div>
+    </div>
+  </div>
+  <div id="mbftCallout" style="display:none;" class="mbft-callout">
+    <div class="title">🏢 MBFT-Funded Family Expenses</div>
+    <div id="mbftCalloutContent"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION E: INCOME ANALYSIS — LAST 12 MONTHS
+══════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Income Analysis — Last 12 Months</div>
+  <div class="chart-row" style="margin-bottom:20px;">
+    <div class="chart-full">
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px;">
+        Monthly Income by Source
+      </div>
+      <div style="height:260px;"><canvas id="incomeStackedChart"></canvas></div>
+    </div>
+    <div class="chart-full">
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px;">
+        Income by Source (total)
+      </div>
+      <div style="height:260px;"><canvas id="incomeSourceChart"></canvas></div>
+    </div>
+  </div>
+  <div id="stabilityIndicator" style="font-size:13px;padding:10px 14px;background:#F8FAF8;
+       border-radius:6px;border-left:4px solid #148F77;"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION F: ONE-OFF FORECAST ENTRY + DIVIDENDS
+══════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="collapsible-header" onclick="toggleSection('familyForecastForm')">
+    <div class="section-title" style="margin-bottom:0;">Add Forecast Entry / Record Dividend</div>
+    <span class="chevron" id="chevron-familyForecastForm">▼</span>
+  </div>
+  <div class="collapsible-body" id="familyForecastForm">
+
+    <!-- One-off forecast -->
+    <div style="font-size:12px;font-weight:700;color:#1A3A2F;text-transform:uppercase;
+                letter-spacing:0.5px;margin-bottom:12px;">One-Off Forecast Entry</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Target Month</label>
+        <input type="month" id="f_month">
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="f_type">
+          <option value="Income">Income</option>
+          <option value="Expense" selected>Expense</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="f_category">
+          <optgroup label="Income">
+            <option>Employment Salary</option>
+            <option>Board/Supervisory Fee</option>
+            <option>Investment Dividend — Public</option>
+            <option>MBFT Dividend Received</option>
+            <option>MB Co Dividend Received</option>
+            <option>Consulting Income — Mārtiņš</option>
+            <option>Consulting Income — Marta</option>
+            <option>Other</option>
+          </optgroup>
+          <optgroup label="Expense">
+            <option>Housing</option>
+            <option>Food & Dining</option>
+            <option>Transport</option>
+            <option>Health & Medical</option>
+            <option>Travel</option>
+            <option>Home & Family</option>
+            <option>Personal — Marta</option>
+            <option>Education</option>
+            <option>Cash Withdrawals</option>
+            <option>Subscriptions & Digital</option>
+            <option>Banking Costs</option>
+            <option>Other</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Counterparty</label>
+        <input type="text" id="f_counterparty" placeholder="Optional">
+      </div>
+      <div class="form-group">
+        <label>Amount (€)</label>
+        <input type="number" id="f_amount" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Certainty</label>
+        <select id="f_certainty">
+          <option value="Confirmed">Confirmed (&gt;90%)</option>
+          <option value="Probable" selected>Probable (50–90%)</option>
+          <option value="Possible">Possible (&lt;50%)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" id="f_notes" placeholder="Optional">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="submitFamilyForecast()">Submit Forecast</button>
+      <span class="form-msg" id="forecastMsg"></span>
+    </div>
+
+    <hr class="divider">
+
+    <!-- MBFT Dividend shortcut -->
+    <div style="font-size:12px;font-weight:700;color:#1A3A2F;text-transform:uppercase;
+                letter-spacing:0.5px;margin-bottom:12px;">Record MBFT Dividend</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Gross Amount (€)</label>
+        <input type="number" id="mbft_div_gross" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Net Amount (€)</label>
+        <input type="number" id="mbft_div_net" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Decision Date</label>
+        <input type="date" id="mbft_div_decision">
+      </div>
+      <div class="form-group">
+        <label>Payment Date</label>
+        <input type="date" id="mbft_div_payment">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" id="mbft_div_notes" placeholder="Optional">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-gold" onclick="submitDividend('MBFT')">Record MBFT Dividend</button>
+      <span class="form-msg" id="mbftDivMsg"></span>
+    </div>
+
+    <hr class="divider">
+
+    <!-- MB Co Dividend shortcut -->
+    <div style="font-size:12px;font-weight:700;color:#1A3A2F;text-transform:uppercase;
+                letter-spacing:0.5px;margin-bottom:12px;">Record MB Co Dividend</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Gross Amount (€)</label>
+        <input type="number" id="mbco_div_gross" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Net Amount (€)</label>
+        <input type="number" id="mbco_div_net" step="0.01" placeholder="0.00">
+      </div>
+      <div class="form-group">
+        <label>Decision Date</label>
+        <input type="date" id="mbco_div_decision">
+      </div>
+      <div class="form-group">
+        <label>Payment Date</label>
+        <input type="date" id="mbco_div_payment">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" id="mbco_div_notes" placeholder="Optional">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-teal" onclick="submitDividend('MBCo')">Record MB Co Dividend</button>
+      <span class="form-msg" id="mbcoDivMsg"></span>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION G: CREDIT CARD TRACKER
+══════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="collapsible-header" onclick="toggleSection('ccPanel')">
+    <div class="section-title" style="margin-bottom:0;">Credit Card Tracker — Citadele</div>
+    <span class="chevron" id="chevron-ccPanel">▼</span>
+  </div>
+  <div class="collapsible-body" id="ccPanel">
+    <div class="cc-stats-row" id="ccStats">
+      <div class="cc-stat"><div class="label">Current Balance</div>
+        <div class="value text-red" id="ccBalance">—</div></div>
+      <div class="cc-stat"><div class="label">Interest This Month</div>
+        <div class="value" id="ccInterest">—</div></div>
+      <div class="cc-stat"><div class="label">Projected Payoff</div>
+        <div class="value" id="ccPayoff">—</div></div>
+    </div>
+    <div class="cc-grid">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px;">Balance History</div>
+        <div style="height:180px;"><canvas id="ccChart"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#555;text-transform:uppercase;
+                    letter-spacing:0.4px;margin-bottom:12px;">Record Payment</div>
+        <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+          <div class="form-group">
+            <label>Month</label>
+            <input type="month" id="cc_month">
+          </div>
+          <div class="form-group">
+            <label>Payment (€)</label>
+            <input type="number" id="cc_payment" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label>Interest (€)</label>
+            <input type="number" id="cc_interest" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label>Opening Balance (€)</label>
+            <input type="number" id="cc_opening" step="0.01" placeholder="auto">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="submitCCPayment()">Save Payment</button>
+          <span class="form-msg" id="ccMsg"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION H: RISK DASHBOARD — 6-MONTH FORWARD VIEW
+══════════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="section-title">6-Month Forward Risk View</div>
+  <table id="riskTable">
+    <thead><tr>
+      <th>Month</th>
+      <th class="text-right">Projected Income</th>
+      <th class="text-right">Projected Expenses</th>
+      <th class="text-right">Net</th>
+      <th class="text-right">Projected Balance</th>
+      <th style="text-align:center;">Risk Level</th>
+      <th>Notes</th>
+    </tr></thead>
+    <tbody id="riskTableBody">
+      <tr><td colspan="7" class="loading"><span class="spinner"></span> Loading…</td></tr>
+    </tbody>
+  </table>
+  <div id="riskSummary" style="margin-top:14px;"></div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ── CONFIG ─────────────────────────────────────────────────────────────────
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwy0erI2541x5fhCUSMu2kTqMxpqQOZABWdjz4cShr9qa8hjOW2SM7UJD4fm0Y5SaVYrw/exec';
+// ───────────────────────────────────────────────────────────────────────────
+
+// Known income transition dates (from spec)
+const LU_END    = '2026-08';   // LU salary last month
+const VNI_START = '2026-07';   // VNĪ salary first month
+const CC_FLOOR  = 2000;        // minimum cash buffer
+
+let familySummaryData   = [];
+let familyExpenseData   = null;
+let familyIncomeData    = null;
+let cashFlowChart       = null;
+let expenseDonutChart   = null;
+let expenseBarCh        = null;
+let incomeStackedCh     = null;
+let incomeSourceCh      = null;
+let ccChart             = null;
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('currentDate').textContent =
+    new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  const cm = currentMonthValue();
+  document.getElementById('f_month').value   = cm;
+  document.getElementById('cc_month').value  = cm;
+
+  await Promise.all([
+    loadFamilySummary(),
+    loadFamilyExpenses(),
+    loadFamilyIncome(),
+    loadCreditCard()
+  ]);
+
+  document.getElementById('lastUpdated').textContent =
+    'Last updated: ' + new Date().toLocaleTimeString('en-GB');
+});
+
+function currentMonthValue() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function fmt(n)     { return '€' + (parseFloat(n)||0).toLocaleString('en-DE', {minimumFractionDigits:0,maximumFractionDigits:0}); }
+function fmtFull(n) { return '€' + (parseFloat(n)||0).toLocaleString('en-DE', {minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+async function apiFetch(action) {
+  const res = await fetch(WEB_APP_URL + '?action=' + action);
+  return res.json();
+}
+
+// ── SECTION A + C + H: FAMILY SUMMARY ─────────────────────────────────────
+async function loadFamilySummary() {
+  const json = await apiFetch('family_summary');
+  if (json.error) { console.error(json.error); return; }
+  familySummaryData = json.data;
+  renderIncomeKPIs();
+  renderCashFlowChart();
+  renderRiskTable();
+}
+
+function getDisplayRow() {
+  const cm = currentMonthValue();
+  let row = familySummaryData.find(r => r.Month === cm);
+  if (!row || (parseFloat(row.Total_Family_Income) === 0 && parseFloat(row.Total_Family_Expenses) === 0)) {
+    const withData = familySummaryData.filter(r =>
+      r.Month <= cm && (parseFloat(r.Total_Family_Income) > 0 || parseFloat(r.Total_Family_Expenses) > 0));
+    row = withData.length > 0 ? withData[withData.length - 1] : {};
+  }
+  return row || {};
+}
+
+function renderIncomeKPIs() {
+  const row = getDisplayRow();
+  const martins  = parseFloat(row.Martins_Personal_Income)       || 0;
+  const marta    = parseFloat(row.Marta_Personal_Income)         || 0;
+  const mbftDiv  = parseFloat(row.MBFT_Dividends_Received)       || 0;
+  const mbcoDiv  = parseFloat(row.MBCo_Dividends_Received)       || 0;
+  const mbftFA   = parseFloat(row.MBFT_Family_Attributed_Value)  || 0;
+  const total    = parseFloat(row.Total_Family_Income)           || 0;
+  const month    = row.Month || currentMonthValue();
+
+  document.getElementById('incomeKpis').innerHTML = `
+    <div class="kpi-card navy">
+      <div class="kpi-label">Mārtiņš Income</div>
+      <div class="kpi-value">${fmt(martins)}</div>
+      <div class="kpi-sub">salary + board fees</div>
+    </div>
+    <div class="kpi-card orange">
+      <div class="kpi-label">Marta Income</div>
+      <div class="kpi-value">${fmt(marta)}</div>
+      <div class="kpi-sub">MBFT salary + clients</div>
+    </div>
+    <div class="kpi-card gold">
+      <div class="kpi-label">MBFT Dividends</div>
+      <div class="kpi-value">${mbftDiv > 0 ? fmt(mbftDiv) : '—'}</div>
+      <div class="kpi-sub">received by family</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-label">MB Co Dividends</div>
+      <div class="kpi-value">${mbcoDiv > 0 ? fmt(mbcoDiv) : '—'}</div>
+      <div class="kpi-sub">received by family</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">MBFT Contribution</div>
+      <div class="kpi-value">${fmt(mbftFA)}</div>
+      <div class="kpi-sub">family-attributed costs</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Total Family Income</div>
+      <div class="kpi-value">${fmt(total)}</div>
+      <div class="kpi-sub">${month}</div>
+    </div>`;
+}
+
+// ── SECTION C: CASH FLOW CHART ─────────────────────────────────────────────
+function renderCashFlowChart() {
+  const cm = currentMonthValue();
+  const labels    = familySummaryData.map(r => r.Month);
+  const isActual  = labels.map(m => m <= cm);
+  const income    = familySummaryData.map(r => parseFloat(r.Total_Family_Income)    || 0);
+  const expenses  = familySummaryData.map(r => parseFloat(r.Total_Family_Expenses)  || 0);
+  const balance   = familySummaryData.map(r => parseFloat(r.Projected_Balance)      || 0);
+
+  // Point styles for salary transition months
+  const pointStyles = labels.map(m => {
+    if (m === VNI_START)  return 'triangle';
+    if (m === LU_END)     return 'rectRot';
+    return 'circle';
+  });
+  const pointColors = labels.map(m => {
+    if (m === VNI_START)  return '#1E8449';
+    if (m === LU_END)     return '#C0392B';
+    return '#2471A3';
+  });
+  const pointSizes = labels.map(m =>
+    (m === VNI_START || m === LU_END) ? 10 : 4);
+
+  const ctx = document.getElementById('cashFlowChart').getContext('2d');
+  if (cashFlowChart) cashFlowChart.destroy();
+
+  cashFlowChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Income (Actual)',    data: income.map((v,i)=>isActual[i]?v:null),
+          backgroundColor: 'rgba(26,58,47,0.85)',  stack: 'inc', yAxisID: 'y' },
+        { label: 'Income (Forecast)',  data: income.map((v,i)=>!isActual[i]?v:null),
+          backgroundColor: 'rgba(26,58,47,0.30)',  stack: 'inc', yAxisID: 'y' },
+        { label: 'Expenses (Actual)',  data: expenses.map((v,i)=>isActual[i]?v:null),
+          backgroundColor: 'rgba(192,57,43,0.80)', stack: 'exp', yAxisID: 'y' },
+        { label: 'Expenses (Forecast)',data: expenses.map((v,i)=>!isActual[i]?v:null),
+          backgroundColor: 'rgba(192,57,43,0.30)', stack: 'exp', yAxisID: 'y' },
+        {
+          label: 'Projected Balance', data: balance, type: 'line',
+          borderColor: '#2471A3', backgroundColor: 'rgba(36,113,163,0.1)',
+          borderWidth: 2, fill: false, tension: 0.3, yAxisID: 'y2',
+          pointStyle: pointStyles, pointBackgroundColor: pointColors,
+          pointRadius: pointSizes, pointHoverRadius: 8
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + fmtFull(ctx.parsed.y),
+            afterBody: (items) => {
+              const m = items[0]?.label;
+              const notes = [];
+              if (m === VNI_START)  notes.push('▲ VNĪ salary starts this month');
+              if (m === LU_END)     notes.push('▼ LU salary ends this month');
+              if (m === '2026-07')  notes.push('⇄ Overlap: both salaries active');
+              return notes;
+            }
+          }
+        },
+        annotation: { /* placeholder for cash floor line */ }
+      },
+      scales: {
+        x: { ticks: { font: { size: 10 } } },
+        y: {
+          position: 'left',
+          ticks: { callback: v => fmt(v) },
+          title: { display: true, text: 'Income / Expenses', font: { size: 10 } }
+        },
+        y2: {
+          position: 'right', grid: { drawOnChartArea: false },
+          ticks: { callback: v => fmt(v) },
+          title: { display: true, text: 'Balance', font: { size: 10 } }
+        }
+      }
+    },
+    plugins: [{
+      // Draw €2,000 floor line manually
+      id: 'cashFloor',
+      afterDraw(chart) {
+        const y2 = chart.scales.y2;
+        if (!y2) return;
+        const y = y2.getPixelForValue(CC_FLOOR);
+        const ctx2 = chart.ctx;
+        ctx2.save();
+        ctx2.beginPath();
+        ctx2.moveTo(chart.chartArea.left, y);
+        ctx2.lineTo(chart.chartArea.right, y);
+        ctx2.strokeStyle = '#C0392B';
+        ctx2.lineWidth = 1.5;
+        ctx2.setLineDash([5, 4]);
+        ctx2.stroke();
+        ctx2.fillStyle = '#C0392B';
+        ctx2.font = '10px Segoe UI';
+        ctx2.fillText('€2,000 floor', chart.chartArea.right - 80, y - 4);
+        ctx2.restore();
+      }
+    }]
+  });
+}
+
+// ── SECTION B: EXPENSE SUMMARY TABLE ──────────────────────────────────────
+async function loadFamilyExpenses() {
+  const json = await apiFetch('family_expense_by_category');
+  if (json.error) return;
+  familyExpenseData = json;
+  renderExpenseSummaryTable();
+  renderExpenseCharts();
+}
+
+function renderExpenseSummaryTable() {
+  const data = familyExpenseData;
+  if (!data) return;
+  const cats = data.categories || [];
+
+  let totalBudget = 0, totalActual = 0;
+  const rows = cats.map(c => {
+    const budget  = parseFloat(c.budget) || 0;
+    const actual  = parseFloat(c.current_month) || 0;
+    const variance = budget > 0 ? actual - budget : null;
+    totalBudget += budget;
+    totalActual += actual;
+    const sc = c.budget_status === 'red' ? 'status-red' :
+               c.budget_status === 'amber' ? 'status-amber' : 'status-green';
+    const st = c.budget_status === 'red'   ? `Over (${c.current_month_pct}%)` :
+               c.budget_status === 'amber' ? `Near (${c.current_month_pct}%)` :
+               budget > 0                  ? `OK (${c.current_month_pct}%)` : '—';
+    const fa = c.fa_total > 0
+      ? `<span class="badge badge-teal">€${Math.round(c.fa_total)} MBFT</span>` : '';
+    const varStr = variance !== null
+      ? `<span class="${variance > 0 ? 'text-red' : 'text-green'}">${variance > 0 ? '+' : ''}${fmtFull(variance)}</span>`
+      : '—';
+    return `<tr>
+      <td>${c.category}${fa ? ' ' + fa : ''}</td>
+      <td class="text-right">${budget > 0 ? fmtFull(budget) : '—'}</td>
+      <td class="text-right">${fmtFull(actual)}</td>
+      <td class="text-right">${varStr}</td>
+      <td class="${sc}">${st}</td>
+    </tr>`;
+  }).join('');
+
+  const cashNote = `<div style="margin-top:10px;font-size:12px;color:#888;">
+    ℹ️ Cash Withdrawals (€${fmt(cats.find(c=>c.category==='Cash Withdrawals')?.current_month||0)})
+    — tracking visibility limited to ATM amounts only. Actual spend unknown.
+  </div>`;
+
+  document.getElementById('expenseSummaryTable').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Category</th><th class="text-right">Budget</th>
+        <th class="text-right">Actual / Forecast</th>
+        <th class="text-right">Variance</th><th>Status</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr class="total-row">
+        <td>Total</td>
+        <td class="text-right">${fmtFull(totalBudget)}</td>
+        <td class="text-right">${fmtFull(totalActual)}</td>
+        <td class="text-right">
+          <span class="${totalActual > totalBudget ? 'text-red' : 'text-green'}">
+            ${totalActual > totalBudget ? '+' : ''}${fmtFull(totalActual - totalBudget)}
+          </span>
+        </td>
+        <td class="${totalActual > totalBudget ? 'status-red' : 'status-green'}">
+          ${totalActual > totalBudget ? 'Over budget' : 'Within budget'}
+        </td>
+      </tr></tfoot>
+    </table>
+    ${cashNote}`;
+}
+
+function renderExpenseCharts() {
+  const cats = familyExpenseData?.categories || [];
+  const palette = ['#1A3A2F','#E67E22','#2471A3','#8E44AD','#148F77',
+                   '#C0392B','#D4AC0D','#1E8449','#7F8C8D','#2C3E50','#E74C3C','#95A5A6'];
+
+  // Donut
+  const dCtx = document.getElementById('expenseDonut').getContext('2d');
+  if (expenseDonutChart) expenseDonutChart.destroy();
+  expenseDonutChart = new Chart(dCtx, {
+    type: 'doughnut',
+    data: {
+      labels: cats.map(c => c.category),
+      datasets: [{ data: cats.map(c => c.total), backgroundColor: palette, borderWidth: 2, borderColor: '#fff' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { boxWidth: 11, font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+              const pct = total > 0 ? Math.round(ctx.parsed/total*100) : 0;
+              return ctx.label + ': ' + fmtFull(ctx.parsed) + ' (' + pct + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // Horizontal bar budget vs actual
+  const colors = cats.map(c =>
+    c.budget_status === 'red'   ? 'rgba(192,57,43,0.8)' :
+    c.budget_status === 'amber' ? 'rgba(230,126,34,0.8)' :
+                                  'rgba(26,58,47,0.75)');
+  const bCtx = document.getElementById('expenseBarChart').getContext('2d');
+  if (expenseBarCh) expenseBarCh.destroy();
+  expenseBarCh = new Chart(bCtx, {
+    type: 'bar',
+    data: {
+      labels: cats.map(c => c.category),
+      datasets: [
+        { label: 'Monthly Avg', data: cats.map(c => c.monthly_avg), backgroundColor: colors },
+        { label: 'Budget', data: cats.map(c => c.budget || 0),
+          backgroundColor: 'transparent', borderColor: '#1A3A2F',
+          borderWidth: 2, borderDash: [4,3] }
+      ]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 11, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtFull(ctx.parsed.x) } }
+      },
+      scales: { x: { ticks: { callback: v => fmt(v) } } }
+    }
+  });
+
+  // MBFT callout
+  const mbftItems = cats.filter(c => c.fa_total > 0);
+  if (mbftItems.length > 0) {
+    const el = document.getElementById('mbftCallout');
+    el.style.display = 'block';
+    document.getElementById('mbftCalloutContent').innerHTML =
+      mbftItems.map(c =>
+        `<span style="margin-right:16px;font-size:13px;">
+          <strong>${c.category}</strong>: ${fmtFull(c.fa_total)} paid by MBFT
+        </span>`).join('');
+  }
+}
+
+// ── SECTION E: INCOME ANALYSIS ─────────────────────────────────────────────
+async function loadFamilyIncome() {
+  const json = await apiFetch('family_income_by_source');
+  if (json.error) return;
+  familyIncomeData = json;
+  renderIncomeCharts();
+}
+
+function renderIncomeCharts() {
+  const data = familyIncomeData;
+  if (!data) return;
+  const months  = data.months || [];
+  const sources = data.sources || [];
+
+  // Stacked bar by month
+  const sCtx = document.getElementById('incomeStackedChart').getContext('2d');
+  if (incomeStackedCh) incomeStackedCh.destroy();
+  incomeStackedCh = new Chart(sCtx, {
+    type: 'bar',
+    data: {
+      labels: months.map(m => m.month),
+      datasets: [
+        { label: 'Mārtiņš', data: months.map(m => m.martins),    backgroundColor: 'rgba(26,58,47,0.85)',  stack: 's' },
+        { label: 'Marta',   data: months.map(m => m.marta),      backgroundColor: 'rgba(230,126,34,0.85)', stack: 's' },
+        { label: 'Dividends',data: months.map(m => m.dividends), backgroundColor: 'rgba(212,172,13,0.85)', stack: 's' },
+        { label: 'MBFT Contribution', data: months.map(m => m.mbft_contrib),
+          backgroundColor: 'rgba(20,143,119,0.75)', stack: 's' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 11, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmtFull(ctx.parsed.y) } }
+      },
+      scales: {
+        x: { stacked: true, ticks: { font: { size: 10 } } },
+        y: { stacked: true, ticks: { callback: v => fmt(v) } }
+      }
+    }
+  });
+
+  // Source totals bar
+  const rCtx = document.getElementById('incomeSourceChart').getContext('2d');
+  if (incomeSourceCh) incomeSourceCh.destroy();
+  incomeSourceCh = new Chart(rCtx, {
+    type: 'bar',
+    data: {
+      labels: sources.map(s => s.source),
+      datasets: [{ label: 'Total', data: sources.map(s => s.total),
+        backgroundColor: 'rgba(26,58,47,0.8)' }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmtFull(ctx.parsed.x) } }
+      },
+      scales: { x: { ticks: { callback: v => fmt(v) } } }
+    }
+  });
+
+  // Stability indicator
+  const pct = data.stability_pct || 0;
+  const colour = pct >= 60 ? '#1E8449' : pct >= 40 ? '#E67E22' : '#C0392B';
+  document.getElementById('stabilityIndicator').innerHTML =
+    `<span style="color:${colour};font-weight:700;">Income Stability: ${pct}% fixed</span>
+     <span style="color:#888;margin-left:8px;">
+       (${pct}% from salary + board fees vs ${100-pct}% variable — consulting, dividends)
+     </span>`;
+}
+
+// ── SECTION H: RISK TABLE ──────────────────────────────────────────────────
+function renderRiskTable() {
+  const cm = currentMonthValue();
+  const forward6 = familySummaryData.filter(r => r.Month >= cm).slice(0, 6);
+  let atRisk = 0;
+
+  const rows = forward6.map(r => {
+    const inc  = parseFloat(r.Total_Family_Income)   || 0;
+    const exp  = parseFloat(r.Total_Family_Expenses) || 0;
+    const net  = parseFloat(r.Family_Net_Cash)       || 0;
+    const bal  = parseFloat(r.Projected_Balance)     || 0;
+
+    let riskClass, riskLabel, notes = [];
+    if (bal < CC_FLOOR || net < 0) {
+      riskClass = 'risk-red'; riskLabel = '🔴 High'; atRisk++;
+    } else if (bal < 5000 || net < 1000) {
+      riskClass = 'risk-amber'; riskLabel = '🟡 Medium';
+    } else {
+      riskClass = 'risk-green'; riskLabel = '🟢 Low';
+    }
+
+    if (r.Month === LU_END)     notes.push('Last LU salary');
+    if (r.Month === VNI_START)  notes.push('VNĪ starts');
+    if (r.Month === '2026-07')  notes.push('Income transition month');
+
+    return `<tr>
+      <td><strong>${r.Month}</strong></td>
+      <td class="text-right text-green">${fmtFull(inc)}</td>
+      <td class="text-right text-red">${fmtFull(exp)}</td>
+      <td class="text-right ${net >= 0 ? 'text-green' : 'text-red'}">${fmtFull(net)}</td>
+      <td class="text-right ${bal < CC_FLOOR ? 'text-red' : ''}">${fmtFull(bal)}</td>
+      <td style="text-align:center;"><span class="${riskClass}">${riskLabel}</span></td>
+      <td style="font-size:12px;color:#888;">${notes.join(' · ')}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('riskTableBody').innerHTML = rows ||
+    '<tr><td colspan="7" style="color:#aaa;text-align:center;padding:20px;">No forecast data available.</td></tr>';
+
+  const summaryClass = atRisk === 0 ? 'ok' : atRisk === 1 ? 'warn' : 'danger';
+  const summaryText  = atRisk === 0
+    ? '✅ No cash risk months in the next 6 months.'
+    : `⚠️ ${atRisk} month${atRisk > 1 ? 's' : ''} at risk in the next 6 months — review income/expense forecast.`;
+  document.getElementById('riskSummary').innerHTML =
+    `<div class="risk-summary ${summaryClass}">${summaryText}</div>`;
+}
+
+// ── SECTION G: CREDIT CARD ─────────────────────────────────────────────────
+async function loadCreditCard() {
+  const json = await apiFetch('credit_card');
+  if (json.error) return;
+
+  const latest = json.latest;
+  if (latest) {
+    document.getElementById('ccBalance').textContent  = fmtFull(latest.Closing_Balance);
+    document.getElementById('ccInterest').textContent = fmtFull(latest.Interest_Charge);
+    document.getElementById('ccPayoff').textContent   = json.projected_payoff_month || 'N/A';
+  }
+
+  const rows = json.data || [];
+  if (rows.length > 0) {
+    const cCtx = document.getElementById('ccChart').getContext('2d');
+    if (ccChart) ccChart.destroy();
+    ccChart = new Chart(cCtx, {
+      type: 'line',
+      data: {
+        labels: rows.map(r => r.Month),
+        datasets: [{
+          label: 'Balance', data: rows.map(r => r.Closing_Balance),
+          borderColor: '#C0392B', backgroundColor: 'rgba(192,57,43,0.1)',
+          borderWidth: 2, fill: true, tension: 0.3, pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: ctx => fmtFull(ctx.parsed.y) } }
+        },
+        scales: { y: { ticks: { callback: v => fmt(v) }, reverse: false } }
+      }
+    });
+  }
+}
+
+// ── FORMS ──────────────────────────────────────────────────────────────────
+async function submitFamilyForecast() {
+  const payload = {
+    type: 'forecast_oneoff', entity: 'Family',
+    target_month: document.getElementById('f_month').value,
+    tx_type:      document.getElementById('f_type').value,
+    category:     document.getElementById('f_category').value,
+    counterparty: document.getElementById('f_counterparty').value,
+    amount:       document.getElementById('f_amount').value,
+    certainty:    document.getElementById('f_certainty').value,
+    notes:        document.getElementById('f_notes').value,
+    entered_by:   'Family Dashboard'
+  };
+  if (!payload.target_month || !payload.amount) {
+    showMsg('forecastMsg', 'Month and amount required.', 'error'); return;
+  }
+  try {
+    const res = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (json.success) {
+      showMsg('forecastMsg', '✅ Saved — ' + json.id, 'success');
+      document.getElementById('f_amount').value = '';
+      document.getElementById('f_notes').value  = '';
+      await loadFamilySummary();
+    } else { showMsg('forecastMsg', '❌ ' + (json.error||'Error'), 'error'); }
+  } catch(e) { showMsg('forecastMsg', '❌ ' + e.message, 'error'); }
+}
+
+async function submitDividend(source) {
+  const prefix  = source === 'MBFT' ? 'mbft' : 'mbco';
+  const msgId   = prefix + 'DivMsg';
+  const gross   = parseFloat(document.getElementById(prefix + '_div_gross').value)    || 0;
+  const net     = parseFloat(document.getElementById(prefix + '_div_net').value)      || 0;
+  const decision= document.getElementById(prefix + '_div_decision').value;
+  const payment = document.getElementById(prefix + '_div_payment').value;
+  const notes   = document.getElementById(prefix + '_div_notes').value;
+
+  if (!gross || !payment) { showMsg(msgId, 'Gross amount and payment date required.', 'error'); return; }
+  const month = payment.substring(0, 7);
+  const entity = source === 'MBFT' ? 'MBFT' : 'MBCo';
+  const famCat = source === 'MBFT' ? 'MBFT Dividend Received' : 'MB Co Dividend Received';
+
+  try {
+    // Outflow from entity
+    await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({
+      type: 'actual_entry', transaction_month: month, entity,
+      tx_type: 'Expense', category: 'Dividend Payment', amount: gross,
+      counterparty: 'Family', notes: 'Gross: €'+gross+' | Net: €'+net+' | '+notes,
+      entered_by: 'Family Dashboard'
+    })});
+    // Inflow to family
+    const r2 = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify({
+      type: 'actual_entry', transaction_month: month, entity: 'Family',
+      tx_type: 'Income', category: famCat, amount: net,
+      counterparty: source, notes: 'Net dividend. Gross: €'+gross+' | Decision: '+decision,
+      entered_by: 'Family Dashboard'
+    })}).then(r=>r.json());
+
+    if (r2.success) {
+      showMsg(msgId, '✅ Dividend recorded — both sides saved.', 'success');
+      ['gross','net','decision','payment','notes'].forEach(f =>
+        { document.getElementById(prefix+'_div_'+f).value = ''; });
+      await loadFamilySummary();
+    } else { showMsg(msgId, '❌ Error on family income entry.', 'error'); }
+  } catch(e) { showMsg(msgId, '❌ ' + e.message, 'error'); }
+}
+
+async function submitCCPayment() {
+  const payload = {
+    type: 'credit_card_payment',
+    month:           document.getElementById('cc_month').value,
+    payment:         document.getElementById('cc_payment').value,
+    interest:        document.getElementById('cc_interest').value,
+    opening_balance: document.getElementById('cc_opening').value,
+  };
+  if (!payload.month || !payload.payment) {
+    showMsg('ccMsg', 'Month and payment amount required.', 'error'); return;
+  }
+  try {
+    const res  = await fetch(WEB_APP_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (json.success) {
+      showMsg('ccMsg', '✅ Payment recorded.', 'success');
+      ['cc_payment','cc_interest','cc_opening'].forEach(id =>
+        { document.getElementById(id).value = ''; });
+      await loadCreditCard();
+    } else { showMsg('ccMsg', '❌ ' + (json.error||'Error'), 'error'); }
+  } catch(e) { showMsg('ccMsg', '❌ ' + e.message, 'error'); }
+}
+
+// ── UTILITIES ──────────────────────────────────────────────────────────────
+function toggleSection(id) {
+  const body    = document.getElementById(id);
+  const chevron = document.getElementById('chevron-' + id);
+  const isOpen  = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (chevron) chevron.classList.toggle('open', !isOpen);
+}
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className   = 'form-msg ' + type;
+  setTimeout(() => { el.className = 'form-msg'; }, 5000);
+}
+</script>
+</body>
+</html>
